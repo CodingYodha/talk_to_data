@@ -230,13 +230,17 @@ User Question: {user_question}"""
                 response_structure["steps"].append(step_info)
                 
                 # Generate suggestions and summary
-                print("[SUCCESS] Generating suggestions and summary...")
+                print("[SUCCESS] Generating suggestions...")
                 response_structure["suggestions"] = _generate_suggestions(
                     user_question, step_info["sql"], final_data
                 )
-                response_structure["data_summary"] = _generate_data_summary(
-                    user_question, final_data
-                )
+                
+                # Only generate summary for follow-up queries (when there's context)
+                if previous_sql:
+                    print("[SUCCESS] Generating analysis for follow-up query...")
+                    response_structure["data_summary"] = _generate_data_summary(
+                        user_question, final_data
+                    )
                 
                 return response_structure
                 
@@ -269,14 +273,18 @@ User Question: {user_question}"""
             response_structure["final_data"] = final_data
             response_structure["status"] = "success"
             
-            # Generate suggestions and summary on fallback success too
-            print("[FALLBACK SUCCESS] Generating suggestions and summary...")
+            # Generate suggestions on fallback success
+            print("[FALLBACK SUCCESS] Generating suggestions...")
             response_structure["suggestions"] = _generate_suggestions(
                 user_question, retry_step["sql"], final_data
             )
-            response_structure["data_summary"] = _generate_data_summary(
-                user_question, final_data
-            )
+            
+            # Only generate summary for follow-up queries (when there's context)
+            if previous_sql:
+                print("[FALLBACK SUCCESS] Generating analysis for follow-up query...")
+                response_structure["data_summary"] = _generate_data_summary(
+                    user_question, final_data
+                )
         else:
             response_structure["status"] = "error"
     
