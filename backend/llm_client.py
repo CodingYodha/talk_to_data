@@ -23,8 +23,8 @@ MODELS = {
         "pro": "claude-sonnet-4-5-20250929"
     },
     "free": {
-        "flash": "llama-3.3-70b-versatile",  # Fast model on Groq
-        "pro": "llama-3.3-70b-versatile"     # Same model, Groq free tier
+        "flash": "openai/gpt-oss-20b",  # Fast model on Groq
+        "pro": "openai/gpt-oss-120b"     # Same model, Groq free tier
     }
 }
 
