@@ -202,6 +202,68 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
                             </div>
                         )}
 
+                        {/* Rule-based Table Summary */}
+                        {message.results && message.results.length > 0 && !isStreaming && (
+                            <div className="mt-3 px-3 py-2 rounded-lg bg-[var(--color-bg-alt)] border border-[var(--color-border)]">
+                                <div className="flex flex-wrap gap-4 text-xs text-[var(--color-text-secondary)]">
+                                    <span className="flex items-center gap-1.5">
+                                        <svg className="w-3.5 h-3.5 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                        </svg>
+                                        <strong>{message.results.length}</strong> row{message.results.length !== 1 ? 's' : ''}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <svg className="w-3.5 h-3.5 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                                        </svg>
+                                        <strong>{message.columns.length}</strong> column{message.columns.length !== 1 ? 's' : ''}
+                                    </span>
+                                    {/* Detect numeric columns and show min/max/sum if applicable */}
+                                    {(() => {
+                                        const numericStats = [];
+                                        message.columns.forEach((col, colIdx) => {
+                                            const values = message.results
+                                                .map(row => parseFloat(row[colIdx]))
+                                                .filter(v => !isNaN(v));
+                                            if (values.length === message.results.length && values.length > 1) {
+                                                const sum = values.reduce((a, b) => a + b, 0);
+                                                const min = Math.min(...values);
+                                                const max = Math.max(...values);
+                                                // Only show stats for meaningful numeric columns
+                                                if (max !== min) {
+                                                    numericStats.push({ col, sum, min, max, isPrice: col.toLowerCase().includes('price') || col.toLowerCase().includes('total') || col.toLowerCase().includes('amount') });
+                                                }
+                                            }
+                                        });
+                                        // Show first numeric stat found
+                                        const stat = numericStats[0];
+                                        if (stat) {
+                                            const formatNum = (n) => n >= 1000 ? n.toLocaleString() : (n % 1 !== 0 ? n.toFixed(2) : n);
+                                            return (
+                                                <>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <span className="text-green-500">↑</span>
+                                                        Max {stat.col}: <strong>{formatNum(stat.max)}</strong>
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <span className="text-orange-500">↓</span>
+                                                        Min {stat.col}: <strong>{formatNum(stat.min)}</strong>
+                                                    </span>
+                                                    {stat.isPrice && (
+                                                        <span className="flex items-center gap-1.5">
+                                                            <span className="text-blue-500">Σ</span>
+                                                            Total: <strong>{formatNum(stat.sum)}</strong>
+                                                        </span>
+                                                    )}
+                                                </>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+
                         {/* No results */}
                         {!isStreaming && (!message.results || message.results.length === 0) && !message.error && message.sql_code && (
                             <div className="p-3 rounded-lg bg-[var(--color-bg-alt)] border border-[var(--color-border)]">
