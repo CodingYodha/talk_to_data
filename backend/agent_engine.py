@@ -1,19 +1,16 @@
 import json
 import re
+import asyncio
 from router import determine_complexity
 from database_utils import DBManager
 from prompts import build_system_prompt
-from llm_client import call_llm, call_llm_raw
+from llm_client import call_llm, call_llm_raw, call_llm_raw_async
 
 
 def _fallback_to_pro(db: DBManager, user_question: str, full_prompt: str, 
                      previous_error: str = None, previous_sql: str = None) -> tuple:
     """
     Fallback to PRO (Sonnet) model when Flash (Haiku) fails.
-    Always uses 'pro' model regardless of question complexity.
-    
-    Returns:
-        tuple: (step_info dict, final_data list or None)
     """
     print("[FALLBACK] Switching to PRO (Sonnet) model...")
     
@@ -61,36 +58,50 @@ def _fallback_to_pro(db: DBManager, user_question: str, full_prompt: str,
         return step_info, None
 
 
-def _generate_suggestions(user_question: str, sql_code: str, data_sample: list) -> list:
+# ============ ASYNC HELPER FUNCTIONS FOR PARALLEL EXECUTION ============
+
+async def _is_follow_up_query_async(current_question: str, previous_sql: str) -> bool:
     """
-    Generate 3 follow-up question suggestions based on the query and data.
-    Uses flash model for speed.
+    Async: Detect if current question is a follow-up to the previous query.
+    """
+    if not previous_sql:
+        return False
     
-    Returns:
-        list: 3 suggested follow-up questions
+    prompt = f"""Previous SQL: {previous_sql[:200]}
+Question: {current_question}
+
+Is this a follow-up/refinement of the previous query? Answer ONLY "yes" or "no"."""
+
+    try:
+        response = await call_llm_raw_async(prompt, model_type='flash')
+        is_followup = 'yes' in response.lower().strip()
+        print(f"[ASYNC FOLLOW-UP] LLM says: {response.strip()} -> {is_followup}")
+        return is_followup
+    except Exception as e:
+        print(f"[ASYNC FOLLOW-UP] Failed: {e}")
+        return False
+
+
+async def _generate_suggestions_async(user_question: str, sql_code: str, data_sample: list) -> list:
+    """
+    Async: Generate 3 follow-up question suggestions.
     """
     if not data_sample:
         return []
     
-    # Take first 3 rows for context
     sample_str = json.dumps(data_sample[:3], indent=2)
     
-    prompt = f"""
-    Based on this SQL query and data, suggest exactly 3 short follow-up questions the user might ask.
+    prompt = f"""Based on this SQL query and data, suggest exactly 3 short follow-up questions.
     
-    User's Question: {user_question}
-    SQL Query: {sql_code}
-    Sample Data: {sample_str}
-    
-    Return ONLY a JSON array of 3 strings, like:
-    ["Question 1?", "Question 2?", "Question 3?"]
-    
-    Keep questions short (under 10 words each). Focus on filtering, sorting, or drilling down.
-    """
-    
+User's Question: {user_question}
+SQL Query: {sql_code}
+Sample Data: {sample_str}
+
+Return ONLY a JSON array: ["Q1?", "Q2?", "Q3?"]
+Keep questions under 10 words."""
+
     try:
-        raw_response = call_llm_raw(prompt, model_type='flash')
-        # Try to extract JSON array from response
+        raw_response = await call_llm_raw_async(prompt, model_type='flash')
         array_match = re.search(r'\[.*?\]', raw_response, re.DOTALL)
         if array_match:
             suggestions = json.loads(array_match.group(0))
@@ -98,64 +109,66 @@ def _generate_suggestions(user_question: str, sql_code: str, data_sample: list) 
                 return [str(s) for s in suggestions[:3]]
         return []
     except Exception as e:
-        print(f"[WARNING] Failed to generate suggestions: {e}")
+        print(f"[ASYNC SUGGESTIONS] Failed: {e}")
         return []
 
 
-def _generate_data_summary(user_question: str, data_sample: list) -> str:
+async def _generate_data_summary_async(user_question: str, data_sample: list) -> str:
     """
-    Generate a 1-sentence business insight summarizing the data.
-    Uses flash model for speed.
-    
-    Returns:
-        str: 1-sentence data summary
+    Async: Generate a 1-sentence business insight.
     """
     if not data_sample:
         return ""
     
-    # Take first 5 rows
     sample_str = json.dumps(data_sample[:5], indent=2)
     
-    prompt = f"""
-    User asked: "{user_question}"
-    Data found (first 5 rows): {sample_str}
-    
-    Summarize the key insight or trend in exactly 1 sentence. Be specific with numbers if available.
-    Return ONLY the summary sentence, no JSON, no quotes, no markdown.
-    """
-    
+    prompt = f"""User asked: "{user_question}"
+Data found (first 5 rows): {sample_str}
+
+Summarize the key insight in exactly 1 sentence. Be specific with numbers.
+Return ONLY the summary sentence, no JSON, no quotes."""
+
     try:
-        raw_response = call_llm_raw(prompt, model_type='flash')
-        # Clean up the response - remove any quotes, markdown, or extra text
-        summary = raw_response.strip()
-        summary = summary.strip('"').strip("'")
-        summary = re.sub(r'^[`\'"]+|[`\'"]+$', '', summary)  # Remove backticks and quotes
-        # If it starts with JSON-like content, it failed
+        raw_response = await call_llm_raw_async(prompt, model_type='flash')
+        summary = raw_response.strip().strip('"').strip("'")
+        summary = re.sub(r'^[`\'"]+|[`\'"]+$', '', summary)
         if summary.startswith('{') or summary.startswith('['):
             return ""
         return summary
     except Exception as e:
-        print(f"[WARNING] Failed to generate data summary: {e}")
+        print(f"[ASYNC SUMMARY] Failed: {e}")
         return ""
+
+
+async def _run_parallel_post_processing(
+    user_question: str, 
+    sql_code: str, 
+    final_data: list, 
+    previous_sql: str
+) -> tuple:
+    """
+    Run follow-up check, suggestions, and summary generation in PARALLEL.
+    Returns (is_followup, suggestions, data_summary).
+    """
+    print("[PARALLEL] Starting 3 async LLM calls...")
+    
+    # Run all 3 LLM calls simultaneously
+    is_followup, suggestions, summary = await asyncio.gather(
+        _is_follow_up_query_async(user_question, previous_sql),
+        _generate_suggestions_async(user_question, sql_code, final_data),
+        _generate_data_summary_async(user_question, final_data)
+    )
+    
+    print(f"[PARALLEL] Complete: followup={is_followup}, suggestions={len(suggestions)}, summary_len={len(summary)}")
+    
+    # Only return summary if it's a follow-up query
+    return is_followup, suggestions, summary if is_followup else ""
 
 
 def process_question(user_question: str, previous_sql: str = None) -> dict:
     """
-    Orchestrates the Text-to-SQL logic with robust fallback:
-    1. Determine complexity (Router).
-    2. Get schema context (DB).
-    3. Build System Prompt (with previous SQL context if provided).
-    4. Call LLM (Flash/Haiku first).
-    5. Execute SQL.
-    6. If ANY failure occurs, ALWAYS fallback to PRO (Sonnet).
-    7. On success: Generate suggestions and data summary.
-    
-    Args:
-        user_question (str): The user's natural language question.
-        previous_sql (str, optional): Previously executed SQL for context.
-        
-    Returns:
-        dict: Contains question, steps, final_data, suggestions, data_summary, status.
+    Orchestrates the Text-to-SQL logic with robust fallback.
+    Uses PARALLEL LLM calls for post-processing (suggestions, summary, follow-up check).
     """
     response_structure = {
         "question": user_question,
@@ -175,7 +188,7 @@ def process_question(user_question: str, previous_sql: str = None) -> dict:
     db = DBManager()
     schema_summary = db.get_schema_summary()
     
-    # 3. Prompt Construction (with previous SQL context if provided)
+    # 3. Prompt Construction
     system_prompt = build_system_prompt(schema_summary)
     
     if previous_sql:
@@ -187,8 +200,7 @@ The user's previous query generated this SQL:
 {previous_sql}
 ```
 
-If the new question is a follow-up (e.g., "filter by...", "sort by...", "show only..."), 
-modify the previous SQL accordingly. Otherwise, generate a fresh query.
+If the new question is a follow-up, modify the previous SQL. Otherwise, generate a fresh query.
 
 User Question: {user_question}"""
     else:
@@ -229,18 +241,16 @@ User Question: {user_question}"""
                 response_structure["status"] = "success"
                 response_structure["steps"].append(step_info)
                 
-                # Generate suggestions and summary
-                print("[SUCCESS] Generating suggestions...")
-                response_structure["suggestions"] = _generate_suggestions(
-                    user_question, step_info["sql"], final_data
+                # Run post-processing in PARALLEL
+                print("[SUCCESS] Running parallel post-processing...")
+                is_followup, suggestions, summary = asyncio.run(
+                    _run_parallel_post_processing(
+                        user_question, step_info["sql"], final_data, previous_sql
+                    )
                 )
                 
-                # Only generate summary for follow-up queries (when there's context)
-                if previous_sql:
-                    print("[SUCCESS] Generating analysis for follow-up query...")
-                    response_structure["data_summary"] = _generate_data_summary(
-                        user_question, final_data
-                    )
+                response_structure["suggestions"] = suggestions
+                response_structure["data_summary"] = summary
                 
                 return response_structure
                 
@@ -273,18 +283,16 @@ User Question: {user_question}"""
             response_structure["final_data"] = final_data
             response_structure["status"] = "success"
             
-            # Generate suggestions on fallback success
-            print("[FALLBACK SUCCESS] Generating suggestions...")
-            response_structure["suggestions"] = _generate_suggestions(
-                user_question, retry_step["sql"], final_data
+            # Run post-processing in PARALLEL on fallback success
+            print("[FALLBACK SUCCESS] Running parallel post-processing...")
+            is_followup, suggestions, summary = asyncio.run(
+                _run_parallel_post_processing(
+                    user_question, retry_step["sql"], final_data, previous_sql
+                )
             )
             
-            # Only generate summary for follow-up queries (when there's context)
-            if previous_sql:
-                print("[FALLBACK SUCCESS] Generating analysis for follow-up query...")
-                response_structure["data_summary"] = _generate_data_summary(
-                    user_question, final_data
-                )
+            response_structure["suggestions"] = suggestions
+            response_structure["data_summary"] = summary
         else:
             response_structure["status"] = "error"
     
