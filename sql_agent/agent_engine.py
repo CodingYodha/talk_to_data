@@ -1,8 +1,8 @@
 import json
-from router import determine_complexity
-from database_utils import db_manager
-from prompts import build_system_prompt
-from llm_client import call_llm
+from .router import determine_complexity
+from .database_utils import db_manager
+from .prompts import build_system_prompt
+from .llm_client import call_llm
 
 def process_question(user_question):
     """

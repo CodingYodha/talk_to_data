@@ -1,8 +1,9 @@
 import reflex as rx
 from typing import List, Dict, Any, Optional
-import agent_engine
+from . import agent_engine
+from pydantic import BaseModel
 
-class Message(rx.Base):
+class Message(BaseModel): 
     """
     Represents a message in the chat history.
     """
@@ -10,7 +11,8 @@ class Message(rx.Base):
     content: str
     thought_trace: str = ""
     sql_code: str = ""
-    results: List[Dict[str, Any]] = []
+    results: List[List[str]] = []  # Changed to list of lists for table rows
+    columns: List[str] = []
     error: str = ""
 
 class State(rx.State):
@@ -62,13 +64,24 @@ class State(rx.State):
         if status == "error" and not error_msg:
              error_msg = "An unspecified error occurred."
 
+        # Extract columns and convert data to list of lists for table rendering
+        columns = []
+        table_rows = []
+        if final_data and len(final_data) > 0:
+            columns = list(final_data[0].keys())
+            # Convert each dict row to a list of string values
+            for row_dict in final_data:
+                row_values = [str(row_dict.get(col, "")) for col in columns]
+                table_rows.append(row_values)
+
         self.chat_history.append(
             Message(
                 role="assistant",
                 content=f"Processed using {complexity} model.", # We can display complexity here or UI
                 thought_trace=thought_trace or "",
                 sql_code=sql_code or "",
-                results=final_data or [],
+                results=table_rows,
+                columns=columns,
                 error=error_msg or ""
             )
         )

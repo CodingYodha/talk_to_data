@@ -1,4 +1,4 @@
-from database_utils import db_manager
+from sql_agent.database_utils import db_manager
 import pandas as pd
 
 def run_tests():
@@ -15,6 +15,16 @@ def run_tests():
     else:
         print(f"Success! Retrieved {len(df)} rows.")
         print(df.head(2))
+    
+    print("\n--- Testing Float Rounding ---")
+    # Invoice table has Total which is numeric/float
+    df_inv, error_inv = db.execute_query("SELECT Total FROM Invoice LIMIT 3")
+    if error_inv:
+        print(f"Error: {error_inv}")
+    else:
+        print(f"Retrieved Invoice Totals: {df_inv['Total'].tolist()}")
+        # Check if they look rounded (not failing test, just visual)
+    
     print("\n")
 
     print("--- Testing invalid execute_query (Forbidden) ---")

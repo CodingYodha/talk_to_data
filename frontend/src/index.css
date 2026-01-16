@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+/* ============ CUSTOM ANIMATIONS ============ */
+
+/* Fade in from bottom */
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Simple fade in */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Slide in from right */
+@keyframes slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Staggered fade in for lists */
+@keyframes stagger-fade-in {
+    0% {
+        opacity: 0;
+        transform: translateX(16px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Scale in for checkmarks */
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Fade in for table rows */
+@keyframes fade-in-row {
+    from {
+        opacity: 0;
+        transform: translateX(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Shake animation for errors */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20%,
+    60% {
+        transform: translateX(-6px);
+    }
+
+    40%,
+    80% {
+        transform: translateX(6px);
+    }
+}
+
+/* Subtle pulse */
+@keyframes subtle-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Float up */
+@keyframes float-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ============ ANIMATION CLASSES ============ */
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+    animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-slide-in-right {
+    animation: slide-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-stagger-fade-in {
+    animation: stagger-fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-fade-in-row {
+    animation: fade-in-row 0.3s ease-out forwards;
+    opacity: 0;
+}
+
+.animate-shake {
+    animation: shake 0.4s ease-in-out;
+}
+
+.animate-float-up {
+    animation: float-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ============ GLOBAL SMOOTH TRANSITIONS ============ */
+
+/* Enable smooth transitions globally with performance optimization */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Specific smooth transitions for interactive elements */
+button,
+a,
+input,
+.transition-all {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============ SCROLLBAR STYLING ============ */
+
+/* Custom scrollbar for chat */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    transition: background 0.3s ease;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* ============ SMOOTH HOVER STATES ============ */
+
+/* Smooth focus states */
+input:focus,
+button:focus {
+    outline: none;
+    transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Table row hover */
+tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+/* ============ FLOATING BUTTON GLOW ============ */
+
+.hover\:shadow-blue-500\/25:hover {
+    box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.4);
+}

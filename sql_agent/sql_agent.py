@@ -1,5 +1,5 @@
 import reflex as rx
-from state import State, Message
+from .state import State, Message
 
 def render_message(message: Message):
     """
@@ -40,17 +40,66 @@ def render_message(message: Message):
                     rx.cond(
                         message.results,
                         rx.box(
-                            rx.data_table(
-                                data=message.results,
-                                pagination=True,
-                                search=True,
-                                sort=True,
+                            rx.table.root(
+                                rx.table.header(
+                                    rx.table.row(
+                                        rx.foreach(
+                                            message.columns,
+                                            lambda col: rx.table.column_header_cell(
+                                                col,
+                                                style={
+                                                    "fontWeight": "bold",
+                                                    "padding": "12px 16px",
+                                                    "backgroundColor": "#f8f9fa",
+                                                    "borderBottom": "2px solid #dee2e6",
+                                                    "whiteSpace": "nowrap",
+                                                    "color": "black",
+                                                }
+                                            )
+                                        )
+                                    )
+                                ),
+                                rx.table.body(
+                                    rx.foreach(
+                                        message.results,
+                                        lambda row: rx.table.row(
+                                            rx.foreach(
+                                                row,
+                                                lambda cell: rx.table.cell(
+                                                    rx.text(cell),
+                                                    style={
+                                                        "padding": "10px 16px",
+                                                        "borderBottom": "1px solid #dee2e6",
+                                                        "color": "black",
+                                                        "whiteSpace": "pre-wrap",
+                                                        "wordWrap": "break-word",
+                                                    }
+                                                )
+                                            )
+                                        )
+                                    )
+                                ),
+                                width="100%",
+                                style={
+                                    "borderCollapse": "collapse",
+                                    "width": "100%",
+                                }
                             ),
                             width="100%",
-                            overflow="auto",
-                            max_h="400px",
+                            min_width="800px",
+                            overflow_x="auto",
+                            overflow_y="auto",
+                            max_h="500px",
                             mt=2,
+                            bg="white",
+                            border_radius="md",
+                            border="1px solid #dee2e6",
                         ),
+                        # Show 'No results' for assistant messages without data
+                        rx.cond(
+                           message.role == "assistant", 
+                           rx.text("No results found.", font_style="italic", color="gray.500", mt=2)
+                        )
                     ),
 
                     # Error Box (if error exists)

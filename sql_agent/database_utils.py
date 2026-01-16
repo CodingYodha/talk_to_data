@@ -61,6 +61,10 @@ class db_manager:
         conn = self.get_connection()
         try:
             df = pd.read_sql(sql_query, conn)
+            # Round float columns to 2 decimal places
+            for col in df.select_dtypes(include=['float']).columns:
+                df[col] = df[col].round(2)
+                
             return df, None
         except Exception as e:
             return None, str(e)

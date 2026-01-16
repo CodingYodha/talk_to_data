@@ -33,17 +33,29 @@ def call_llm(prompt, model_type='flash'):
     
     Returns:
         str: The raw JSON response string.
+    
+    Raises:
+        Exception: If the LLM call fails.
     """
     if model_type == 'flash':
         try:
-            model = genai.GenerativeModel(
-                'gemini-2.5-flash',
-                generation_config={"response_mime_type": "application/json"}
+            # Using Claude Haiku 4.5 for faster/cheaper queries
+            system_prompt = "Output valid JSON only."
+            
+            message = anthropic_client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
             )
-            response = model.generate_content(prompt)
-            return _clean_json_response(response.text)
+            result = _clean_json_response(message.content[0].text)
+            print(f"[DEBUG] Haiku Response: {result[:500]}...")  # Debug log
+            return result
         except Exception as e:
-            return f"Error calling Gemini: {e}"
+            print(f"[ERROR] Haiku API Error: {e}")
+            raise Exception(f"Haiku API Error: {e}")
 
     elif model_type == 'pro':
         try:
@@ -59,9 +71,12 @@ def call_llm(prompt, model_type='flash'):
                     {"role": "user", "content": prompt}
                 ]
             )
-            return _clean_json_response(message.content[0].text)
+            result = _clean_json_response(message.content[0].text)
+            print(f"[DEBUG] Claude Response: {result[:500]}...")  # Debug log
+            return result
         except Exception as e:
-            return f"Error calling Anthropic: {e}"
+            print(f"[ERROR] Anthropic API Error: {e}")
+            raise Exception(f"Anthropic API Error: {e}")
 
     else:
-        return f"Error: Unknown model_type '{model_type}'"
+        raise Exception(f"Unknown model_type '{model_type}'")
