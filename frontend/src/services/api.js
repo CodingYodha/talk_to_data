@@ -37,10 +37,14 @@ export async function submitQuery(question, previousSql = null) {
  * @param {string} question - The user's question
  * @param {string} previousSql - Optional previous SQL for context
  * @param {function} onEvent - Callback for each event: (eventType, data) => void
+ * @param {string} llmMode - 'paid' for Claude or 'free' for GPT-OSS
  * @returns {Promise<void>} - Resolves when stream completes
  */
-export async function streamQuery(question, previousSql = null, onEvent) {
-    const body = { question };
+export async function streamQuery(question, previousSql = null, onEvent, llmMode = 'paid') {
+    const body = {
+        question,
+        llm_mode: llmMode
+    };
     if (previousSql) {
         body.previous_sql = previousSql;
     }

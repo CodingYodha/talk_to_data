@@ -10,6 +10,38 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+# Groq client for free tier (OpenAI-compatible)
+import httpx
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+# Model mappings
+MODELS = {
+    "paid": {
+        "flash": "claude-haiku-4-5-20251001",
+        "pro": "claude-sonnet-4-5-20250929"
+    },
+    "free": {
+        "flash": "llama-3.3-70b-versatile",  # Fast model on Groq
+        "pro": "llama-3.3-70b-versatile"     # Same model, Groq free tier
+    }
+}
+
+# Current LLM mode - can be 'paid' or 'free'
+_current_llm_mode = "paid"
+
+def set_llm_mode(mode: str):
+    """Set the LLM mode globally."""
+    global _current_llm_mode
+    if mode in ["paid", "free"]:
+        _current_llm_mode = mode
+        print(f"[LLM MODE] Switched to: {mode}")
+
+def get_llm_mode() -> str:
+    """Get current LLM mode."""
+    return _current_llm_mode
+
 
 def _clean_json_response(response_text: str) -> str:
     """
@@ -51,16 +83,94 @@ def _clean_json_response(response_text: str) -> str:
     return text
 
 
-def call_llm(prompt: str, model_type: str = 'flash') -> str:
+def _call_groq(prompt: str, system_prompt: str = "Output valid JSON only.", max_tokens: int = 4096) -> str:
+    """Call Groq API (OpenAI-compatible)."""
+    if not GROQ_API_KEY:
+        raise Exception("GROQ_API_KEY not set in environment")
+    
+    model = MODELS["free"]["flash"]
+    
+    try:
+        response = httpx.post(
+            GROQ_API_URL,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.1
+            },
+            timeout=60.0
+        )
+        response.raise_for_status()
+        result = response.json()
+        content = result["choices"][0]["message"]["content"]
+        print(f"[DEBUG] Groq ({model}) Response: {content[:300]}...")
+        return content
+    except Exception as e:
+        print(f"[ERROR] Groq API Error: {e}")
+        raise Exception(f"Groq API Error: {e}")
+
+
+async def _call_groq_async(prompt: str, system_prompt: str = "", max_tokens: int = 1024) -> str:
+    """Async call to Groq API."""
+    if not GROQ_API_KEY:
+        raise Exception("GROQ_API_KEY not set in environment")
+    
+    model = MODELS["free"]["flash"]
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                GROQ_API_URL,
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt} if system_prompt else None,
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.1
+                },
+                timeout=60.0
+            )
+            response.raise_for_status()
+            result = response.json()
+            content = result["choices"][0]["message"]["content"]
+            print(f"[ASYNC] Groq ({model}) Raw: {content[:100]}...")
+            return content.strip()
+    except Exception as e:
+        print(f"[ERROR] Async Groq Error: {e}")
+        raise Exception(f"Async Groq Error: {e}")
+
+
+def call_llm(prompt: str, model_type: str = 'flash', llm_mode: str = None) -> str:
     """
     Calls the specified LLM provider and returns a JSON string (sync).
     """
+    mode = llm_mode or _current_llm_mode
     system_prompt = "Output valid JSON only."
     
+    # Use Groq for free mode
+    if mode == "free":
+        result = _call_groq(prompt, system_prompt)
+        return _clean_json_response(result)
+    
+    # Use Anthropic for paid mode
     if model_type == 'flash':
         try:
             message = anthropic_client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=MODELS["paid"]["flash"],
                 max_tokens=4096,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}]
@@ -75,7 +185,7 @@ def call_llm(prompt: str, model_type: str = 'flash') -> str:
     elif model_type == 'pro':
         try:
             message = anthropic_client.messages.create(
-                model="claude-sonnet-4-5-20250929",
+                model=MODELS["paid"]["pro"],
                 max_tokens=4096,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}]
@@ -91,14 +201,21 @@ def call_llm(prompt: str, model_type: str = 'flash') -> str:
         raise Exception(f"Unknown model_type '{model_type}'")
 
 
-def call_llm_raw(prompt: str, model_type: str = 'flash') -> str:
+def call_llm_raw(prompt: str, model_type: str = 'flash', llm_mode: str = None) -> str:
     """
     Calls the LLM and returns RAW response without JSON cleaning (sync).
     """
+    mode = llm_mode or _current_llm_mode
+    
+    # Use Groq for free mode
+    if mode == "free":
+        return _call_groq(prompt, "", max_tokens=1024)
+    
+    # Use Anthropic for paid mode
     if model_type == 'flash':
         try:
             message = anthropic_client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=MODELS["paid"]["flash"],
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -112,7 +229,7 @@ def call_llm_raw(prompt: str, model_type: str = 'flash') -> str:
     elif model_type == 'pro':
         try:
             message = anthropic_client.messages.create(
-                model="claude-sonnet-4-5-20250929",
+                model=MODELS["paid"]["pro"],
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -129,15 +246,22 @@ def call_llm_raw(prompt: str, model_type: str = 'flash') -> str:
 
 # ============ ASYNC VERSIONS FOR PARALLEL CALLS ============
 
-async def call_llm_raw_async(prompt: str, model_type: str = 'flash') -> str:
+async def call_llm_raw_async(prompt: str, model_type: str = 'flash', llm_mode: str = None) -> str:
     """
     Async version - Calls the LLM and returns RAW response.
     Use this for parallel calls with asyncio.gather().
     """
+    mode = llm_mode or _current_llm_mode
+    
+    # Use Groq for free mode
+    if mode == "free":
+        return await _call_groq_async(prompt, "", max_tokens=1024)
+    
+    # Use Anthropic for paid mode
     if model_type == 'flash':
         try:
             message = await async_anthropic_client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=MODELS["paid"]["flash"],
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -151,7 +275,7 @@ async def call_llm_raw_async(prompt: str, model_type: str = 'flash') -> str:
     elif model_type == 'pro':
         try:
             message = await async_anthropic_client.messages.create(
-                model="claude-sonnet-4-5-20250929",
+                model=MODELS["paid"]["pro"],
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}]
             )

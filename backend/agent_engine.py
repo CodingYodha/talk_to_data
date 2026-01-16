@@ -461,15 +461,25 @@ User Question: {user_question}"""
 
 # ============ STREAMING VERSION FOR SSE ============
 
-async def process_question_streaming(user_question: str, previous_sql: str = None):
+async def process_question_streaming(user_question: str, previous_sql: str = None, llm_mode: str = "paid"):
     """
     Streaming version of process_question that yields SSE events progressively.
     Each yield is a dict with 'event' and 'data' keys.
+    
+    Args:
+        user_question: The user's natural language question
+        previous_sql: Optional previous SQL for context
+        llm_mode: 'paid' for Claude (Anthropic) or 'free' for Groq (Llama)
     """
     import json as json_module
+    from llm_client import set_llm_mode
+    
+    # Set the LLM mode globally
+    set_llm_mode(llm_mode)
     
     # 0. Initial status
-    yield {"event": "status", "data": "Analyzing your question..."}
+    mode_label = "Premium (Claude)" if llm_mode == "paid" else "Free (Llama)"
+    yield {"event": "status", "data": f"Analyzing with {mode_label}..."}
     
     # 1. Check cache first
     cached_result = query_cache.get(user_question, previous_sql)

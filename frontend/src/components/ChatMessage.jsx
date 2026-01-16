@@ -74,19 +74,19 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
 
     if (isUser) {
         return (
-            <div className="flex justify-end mb-4 animate-fade-in-up">
-                <div className="px-4 py-3 rounded-2xl max-w-[80%] bg-[var(--color-primary)] text-[var(--color-bg)]">
-                    <p className="text-sm">{message.content}</p>
+            <div className="flex justify-end mb-3 md:mb-4 animate-fade-in-up">
+                <div className="px-3 py-2 md:px-4 md:py-3 rounded-2xl max-w-[85%] md:max-w-[80%] bg-[var(--color-primary)] text-[var(--color-bg)]">
+                    <p className="text-xs md:text-sm">{message.content}</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="flex justify-start mb-4 animate-fade-in-up w-full">
-            <div className={`card w-full transition-all duration-200 ${isSelected ? 'ring-2 ring-[var(--color-accent)]' : ''}`}>
+        <div className="flex justify-start mb-3 md:mb-4 animate-fade-in-up w-full">
+            <div className={`card w-full p-3 md:p-6 transition-all duration-200 ${isSelected ? 'ring-2 ring-[var(--color-accent)]' : ''}`}>
                 {/* Header */}
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2 md:gap-3">
                     {showCheckbox && (
                         <button
                             onClick={() => onSelect?.(message.id)}
@@ -204,7 +204,9 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
 
                         {/* No results */}
                         {!isStreaming && (!message.results || message.results.length === 0) && !message.error && message.sql_code && (
-                            <p className="text-sm text-[var(--color-text-muted)] italic">No results found.</p>
+                            <div className="p-3 rounded-lg bg-[var(--color-bg-alt)] border border-[var(--color-border)]">
+                                <p className="text-sm text-[var(--color-text-muted)]">The requested data is not available in the database.</p>
+                            </div>
                         )}
 
                         {/* Download Button */}

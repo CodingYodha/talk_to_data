@@ -40,6 +40,7 @@ class QueryRequest(BaseModel):
     """Request model for query endpoint"""
     question: str
     previous_sql: Optional[str] = None  # For conversation context
+    llm_mode: Optional[str] = "paid"  # 'paid' for Claude, 'free' for GPT-OSS
 
 
 class QueryResponse(BaseModel):
@@ -156,7 +157,8 @@ async def stream_query(request: QueryRequest):
         try:
             async for event in process_question_streaming(
                 user_question=request.question.strip(),
-                previous_sql=request.previous_sql
+                previous_sql=request.previous_sql,
+                llm_mode=request.llm_mode
             ):
                 event_type = event.get("event", "message")
                 event_data = event.get("data", "")
