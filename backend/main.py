@@ -5,15 +5,17 @@ Text-to-SQL Agent with natural language query processing
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+import json
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
-from agent_engine import process_question
+from agent_engine import process_question, process_question_streaming
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -86,7 +88,7 @@ async def submit_query(request: QueryRequest):
     
     try:
         # Process the question through the agent engine
-        result = process_question(
+        result = await process_question(
             user_question=request.question.strip(),
             previous_sql=request.previous_sql
         )
@@ -139,8 +141,53 @@ async def submit_query(request: QueryRequest):
         )
 
 
+# ============ SSE Streaming Endpoint ============
+
+@app.post("/api/query/stream")
+async def stream_query(request: QueryRequest):
+    """
+    SSE streaming endpoint for progressive query results.
+    Sends events as they complete: status, model, thought, sql, table, suggestions, summary, done.
+    """
+    if not request.question or not request.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+    
+    async def event_generator():
+        try:
+            async for event in process_question_streaming(
+                user_question=request.question.strip(),
+                previous_sql=request.previous_sql
+            ):
+                event_type = event.get("event", "message")
+                event_data = event.get("data", "")
+                
+                # Format as SSE
+                if isinstance(event_data, (dict, list)):
+                    data_str = json.dumps(event_data)
+                else:
+                    data_str = str(event_data)
+                
+                yield f"event: {event_type}\ndata: {data_str}\n\n"
+                
+        except Exception as e:
+            print(f"[SSE ERROR] Stream error: {e}")
+            yield f"event: error\ndata: {str(e)}\n\n"
+            yield f"event: done\ndata: {{\"status\": \"error\"}}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
 # ============ Run Server ============
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

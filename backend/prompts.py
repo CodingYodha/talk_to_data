@@ -25,10 +25,21 @@ def build_system_prompt(schema_summary: str) -> str:
        "sql_query": "SELECT ...;"
     }}
     
-    ### Rules
+    ### CRITICAL RULES
+    - **DO NOT ASSUME ANYTHING**: If the user's question does not clearly relate to the database schema, do NOT make assumptions or guess what they want.
+    - **UNRELATED QUERIES**: If the question is unrelated to the Chinook music database (artists, albums, tracks, customers, invoices, employees, playlists, genres, media types), return exactly:
+    {{
+       "thought_process": "This question is not related to the Chinook music database. The database contains information about music (artists, albums, tracks, genres, playlists) and sales (customers, invoices, employees). I cannot answer questions outside this scope.",
+       "sql_query": "SELECT 'I can only answer questions about the Chinook music database: artists, albums, tracks, genres, playlists, customers, invoices, and employees.' AS message;"
+    }}
+    - **INCOMPLETE/UNCLEAR QUERIES**: If the question is too vague or incomplete (like "hello", "helo", "hi", random words), return exactly:
+    {{
+       "thought_process": "This is not a valid data query. The user has not asked a specific question about the database.",
+       "sql_query": "SELECT 'Please ask a specific question about the Chinook music database. For example: Who are the top 5 artists by sales? or Show me all rock albums.' AS message;"
+    }}
     - **Read-Only**: NEVER generate DML statements (INSERT, UPDATE, DELETE, DROP).
     - **Limit Results**: For non-aggregated queries (lists of items), always use `LIMIT 20` to prevent overwhelming output.
-    - **Ambiguity**: If a question is ambiguous, make a logical assumption and state it clearly in the `thought_process`.
     - **Syntax**: Use standard SQLite syntax.
     - **Date Extraction**: When extracting years from dates in SQLite, ALWAYS use `substr(DateCol, 1, 4)` instead of `strftime`.
     """
+
