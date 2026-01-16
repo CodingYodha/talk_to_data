@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { streamQuery } from './services/api';
+import { streamQuery, analyzeData } from './services/api';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
 import ChatMessage from './components/ChatMessage';
 import ChatSidebar from './components/ChatSidebar';
 import SettingsPage from './components/SettingsPage';
+import AnalysisPanel from './components/AnalysisPanel';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -58,6 +59,10 @@ function AppContent() {
       return localStorage.getItem(LLM_MODE_KEY) || 'paid';
     } catch { return 'paid'; }
   });
+  // Analysis state (lifted from ChatMessage)
+  const [analysisData, setAnalysisData] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState(null);
   const messagesEndRef = useRef(null);
 
   const toggleLlmMode = useCallback(() => {
@@ -268,6 +273,47 @@ function AppContent() {
 
   const handleSuggestionClick = (suggestion) => setInputValue(suggestion);
 
+  // Handle deep analysis request from ChatMessage
+  const handleAnalysis = async (data, question) => {
+    // Quick frontend validation with user-friendly message
+    if (!data || data.length < 2) {
+      setAnalysisData(null);
+      setAnalysisError('Analysis cannot be done - data is too short (need at least 2 rows)');
+      return;
+    }
+    if (Object.keys(data[0] || {}).length < 2) {
+      setAnalysisData(null);
+      setAnalysisError('Analysis cannot be done - data is too short (need at least 2 columns)');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    setAnalysisData(null);
+
+    try {
+      console.log('[Analysis] Calling API with', data.length, 'rows');
+      const result = await analyzeData(data, question);
+      console.log('[Analysis] Result:', result);
+
+      if (result.success) {
+        setAnalysisData(result);
+      } else {
+        setAnalysisError(result.error || 'Analysis failed');
+      }
+    } catch (error) {
+      console.error('[Analysis] Error:', error);
+      setAnalysisError(error.message || 'Analysis failed');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleCloseAnalysis = () => {
+    setAnalysisData(null);
+    setAnalysisError(null);
+  };
+
   const handleReportSelect = (messageId) => {
     setSelectedReports((prev) => {
       const newSet = new Set(prev);
@@ -450,6 +496,7 @@ function AppContent() {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-6">
+
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center px-4">
@@ -468,6 +515,7 @@ function AppContent() {
                     isSelected={selectedReports.has(message.id)}
                     onSelect={handleReportSelect}
                     showCheckbox={message.role === 'assistant' && message.results?.length > 0}
+                    onAnalysis={handleAnalysis}
                   />
                 ))}
                 <div ref={messagesEndRef} />
@@ -526,6 +574,26 @@ function AppContent() {
           </div>
         </div>
       </div>
+
+      {/* Floating Analysis Panel */}
+      {(analysisData || isAnalyzing || analysisError) && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            onClick={handleCloseAnalysis}
+          />
+          {/* Panel - Centered at top */}
+          <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-3xl">
+            <AnalysisPanel
+              analysisData={analysisData}
+              isLoading={isAnalyzing}
+              error={analysisError}
+              onClose={handleCloseAnalysis}
+            />
+          </div>
+        </>
+      )}
 
       {/* Floating Download Button */}
       <div className={`fixed bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ${hasSelectedReports ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'}`}>

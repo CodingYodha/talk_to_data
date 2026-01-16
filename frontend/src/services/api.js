@@ -134,3 +134,30 @@ export async function checkHealth() {
         throw error;
     }
 }
+
+/**
+ * Analyze query results for deep insights and chart recommendations
+ * @param {Array<Object>} data - Query result data (array of row objects)
+ * @param {string} question - Original user question for context
+ * @returns {Promise<Object>} - Analysis result with chart config and insights
+ */
+export async function analyzeData(data, question = '') {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ data, question }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Analysis Error:', error);
+        throw error;
+    }
+}

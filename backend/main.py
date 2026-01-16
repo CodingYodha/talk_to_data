@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
 
 from agent_engine import process_question, process_question_streaming
+from analysis_engine import analyze_data
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -62,6 +63,28 @@ class HealthResponse(BaseModel):
     message: str
 
 
+class AnalyzeRequest(BaseModel):
+    """Request model for analysis endpoint"""
+    data: List[dict]  # Query result data
+    question: str = ""  # Original user question for context
+
+
+class ChartConfig(BaseModel):
+    """Chart configuration model"""
+    type: str  # bar, line, scatter, pie, histogram, area
+    x_key: str
+    y_key: str
+    data: List[dict]
+
+
+class AnalyzeResponse(BaseModel):
+    """Response model for analysis endpoint"""
+    success: bool
+    chart_config: Optional[ChartConfig] = None
+    insight_summary: str = ""
+    error: Optional[str] = None
+
+
 # ============ API Endpoints ============
 
 @app.get("/api/health", response_model=HealthResponse)
@@ -71,6 +94,41 @@ async def health_check():
         status="healthy",
         message="Talk to Data API is running"
     )
+
+
+@app.post("/api/analyze", response_model=AnalyzeResponse)
+async def analyze_data_endpoint(request: AnalyzeRequest):
+    """
+    Analyze query results and return chart configuration.
+    Uses heuristic analysis with LLM fallback.
+    """
+    if not request.data or len(request.data) == 0:
+        return AnalyzeResponse(
+            success=False,
+            error="No data provided for analysis"
+        )
+    
+    try:
+        result = analyze_data(request.data, request.question)
+        
+        if result.get("success"):
+            return AnalyzeResponse(
+                success=True,
+                chart_config=ChartConfig(**result["chart_config"]),
+                insight_summary=result.get("insight_summary", "")
+            )
+        else:
+            return AnalyzeResponse(
+                success=False,
+                error=result.get("error", "Analysis failed"),
+                insight_summary=result.get("insight_summary", "")
+            )
+    except Exception as e:
+        print(f"[ERROR] Analysis failed: {e}")
+        return AnalyzeResponse(
+            success=False,
+            error=str(e)
+        )
 
 
 @app.post("/api/query", response_model=QueryResponse)

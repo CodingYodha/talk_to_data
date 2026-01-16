@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 /**
  * ChatMessage Component - Elegant card-style messages
  */
-export default function ChatMessage({ message, isSelected = false, onSelect, showCheckbox = false }) {
+export default function ChatMessage({ message, isSelected = false, onSelect, showCheckbox = false, onAnalysis }) {
     const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
     const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
     const [showTable, setShowTable] = useState(false);
@@ -27,7 +28,7 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
         }
     }, [message.data_summary]);
 
-    const handleDownloadPDF = () => {
+    const handleDownloadPDF = async () => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -67,9 +68,64 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
                 alternateRowStyles: { fillColor: [248, 249, 250] },
                 margin: { left: 14, right: 14 },
             });
+
+            yPos = doc.lastAutoTable.finalY + 15;
+        }
+
+        // Add chart if analysis data exists
+        if (analysisData?.chart_config) {
+            const chartElement = document.getElementById('analysis-chart');
+            if (chartElement) {
+                try {
+                    // Check if we need a new page
+                    if (yPos > 180) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+
+                    doc.setFontSize(12);
+                    doc.setTextColor(26, 31, 54);
+                    doc.text('Visualization:', 14, yPos);
+                    yPos += 10;
+
+                    const canvas = await html2canvas(chartElement, {
+                        backgroundColor: '#ffffff',
+                        scale: 2
+                    });
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = pageWidth - 28;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                    doc.addImage(imgData, 'PNG', 14, yPos, imgWidth, Math.min(imgHeight, 100));
+                } catch (e) {
+                    console.error('Chart capture failed:', e);
+                }
+            }
         }
 
         doc.save('query-report.pdf');
+    };
+
+    const handleDeepAnalysis = () => {
+        console.log('[ChatMessage] Deep Analysis clicked', message.results?.length, 'rows');
+        if (!message.results || message.results.length === 0 || !onAnalysis) {
+            console.log('[ChatMessage] Aborting: no results or no callback');
+            return;
+        }
+
+        // Convert table data to object format for analysis
+        const data = message.results.map(row => {
+            const obj = {};
+            message.columns.forEach((col, idx) => {
+                const val = row[idx];
+                const num = parseFloat(val);
+                obj[col] = !isNaN(num) && val.trim() !== '' ? num : val;
+            });
+            return obj;
+        });
+
+        console.log('[ChatMessage] Calling onAnalysis with', data.length, 'rows');
+        onAnalysis(data, message.originalQuestion || '');
     };
 
     if (isUser) {
@@ -275,9 +331,15 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
                             </div>
                         )}
 
-                        {/* Download Button */}
+                        {/* Action Buttons */}
                         {message.results && message.results.length > 0 && !isStreaming && (
-                            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                            <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex flex-wrap gap-2">
+                                <button onClick={handleDeepAnalysis} className="btn-primary text-sm flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                    Deep Analysis
+                                </button>
                                 <button onClick={handleDownloadPDF} className="btn-secondary text-sm flex items-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
