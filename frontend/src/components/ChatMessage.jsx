@@ -154,19 +154,23 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
                                 </button>
 
                                 {isReasoningExpanded && (
-                                    <div className="mt-3 p-4 bg-[var(--color-bg-alt)] rounded-lg border border-[var(--color-border)]">
+                                    <div className="mt-3 p-4 bg-[var(--color-bg-alt)] rounded-lg border border-[var(--color-border)] space-y-4">
                                         {message.thought_trace && (
-                                            <div className="mb-4">
+                                            <div>
                                                 <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Reasoning</p>
-                                                <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{message.thought_trace}</p>
+                                                <div className="max-h-48 overflow-y-auto">
+                                                    <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap break-words">{message.thought_trace}</p>
+                                                </div>
                                             </div>
                                         )}
                                         {message.sql_code && (
                                             <div>
                                                 <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">SQL Query</p>
-                                                <pre className="p-3 bg-[var(--color-surface)] rounded-lg text-sm font-mono overflow-x-auto border border-[var(--color-border)] text-[var(--color-text)]">
-                                                    {message.sql_code}
-                                                </pre>
+                                                <div className="max-h-64 overflow-auto">
+                                                    <pre className="p-3 bg-[var(--color-surface)] rounded-lg text-sm font-mono border border-[var(--color-border)] text-[var(--color-text)] whitespace-pre-wrap break-all">
+                                                        {message.sql_code}
+                                                    </pre>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
