@@ -1,7 +1,6 @@
-reflex
+
 google-genai
 pandas
 python-dotenv
 anthropic
 
-reflex==0.8.25

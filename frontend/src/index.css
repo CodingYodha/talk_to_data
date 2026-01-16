@@ -1,8 +1,296 @@
 @import "tailwindcss";
 
-/* ============ CUSTOM ANIMATIONS ============ */
+/* ============ GOOGLE FONTS ============ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
 
-/* Fade in from bottom */
+/* ============ CSS VARIABLES - DESIGN TOKENS ============ */
+:root {
+    /* Light Theme */
+    --color-bg: #f8f9fa;
+    --color-bg-alt: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-hover: #f3f4f6;
+    --color-text: #1a1f36;
+    --color-text-secondary: #6b7280;
+    --color-text-muted: #9ca3af;
+    --color-accent: #c4f04f;
+    --color-accent-dark: #a8d435;
+    --color-primary: #1a1f36;
+    --color-border: #e5e7eb;
+    --color-border-light: #f3f4f6;
+
+    /* Hover background for light theme */
+    --hover-bg: rgba(26, 31, 54, 0.08);
+
+    /* Navbar */
+    --navbar-bg: rgba(255, 255, 255, 0.85);
+    --navbar-border: rgba(229, 231, 235, 0.6);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+    /* Typography */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-serif: 'Playfair Display', Georgia, serif;
+
+    /* Grid background - darker in light mode */
+    --grid-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] {
+    --color-bg: #0c0a14;
+    --color-bg-alt: #16121f;
+    --color-surface: #1c1726;
+    --color-surface-hover: #251e32;
+    --color-text: #f8f9fa;
+    --color-text-secondary: #a1a7b4;
+    --color-text-muted: #6b7280;
+    --color-accent: #c4f04f;
+    --color-accent-dark: #a8d435;
+    --color-primary: #f8f9fa;
+    --color-border: #2d2640;
+    --color-border-light: #1f1a2a;
+
+    /* Hover background for dark theme */
+    --hover-bg: rgba(255, 255, 255, 0.1);
+
+    --navbar-bg: rgba(12, 10, 20, 0.9);
+    --navbar-border: rgba(45, 38, 64, 0.6);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+    /* Grid background - brighter in dark mode */
+    --grid-color: rgba(255, 255, 255, 0.04);
+}
+
+/* ============ BASE STYLES ============ */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============ GRID BACKGROUND ============ */
+.grid-bg {
+    background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+/* ============ TYPOGRAPHY ============ */
+.font-serif {
+    font-family: var(--font-serif);
+}
+
+.font-sans {
+    font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* ============ HOVER BACKGROUND EFFECT ============ */
+.hover-bg {
+    position: absolute;
+    inset: 0;
+    background-color: var(--hover-bg);
+    border-radius: inherit;
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    z-index: 0;
+}
+
+.nav-link:hover .hover-bg,
+.suggestion-btn:hover .hover-bg,
+.hover-card:hover .hover-bg {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* ============ SURFACE STYLES ============ */
+.surface {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+}
+
+/* ============ NAVBAR STYLES ============ */
+.navbar {
+    background: var(--navbar-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--navbar-border);
+    border-radius: 9999px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============ BUTTON STYLES ============ */
+.btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-bg);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    padding: 10px 20px;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-secondary:hover {
+    background-color: var(--hover-bg);
+}
+
+.btn-accent {
+    background-color: var(--color-accent);
+    color: #1a1f36;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-accent:hover {
+    background-color: var(--color-accent-dark);
+    transform: translateY(-1px);
+}
+
+/* ============ CARD STYLES ============ */
+.card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.hover-card {
+    position: relative;
+}
+
+.hover-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: var(--hover-bg);
+    border-radius: inherit;
+    transform: scale(0.95);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    z-index: 0;
+}
+
+.hover-card:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.hover-card>* {
+    position: relative;
+    z-index: 1;
+}
+
+/* ============ INPUT STYLES ============ */
+.input {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 15px;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--color-text-muted);
+    box-shadow: 0 0 0 3px var(--hover-bg);
+}
+
+.input::placeholder {
+    color: var(--color-text-muted);
+}
+
+/* ============ SUGGESTION BUTTON ============ */
+.suggestion-btn {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.suggestion-btn:hover {
+    transform: translateX(4px);
+}
+
+/* ============ ANIMATIONS ============ */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 @keyframes fade-in-up {
     from {
         opacity: 0;
@@ -15,202 +303,74 @@
     }
 }
 
-/* Simple fade in */
-@keyframes fade-in {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-/* Slide in from right */
 @keyframes slide-in-right {
     from {
         opacity: 0;
-        transform: translateX(24px);
+        transform: translateX(20px);
     }
 
     to {
         opacity: 1;
         transform: translateX(0);
     }
-}
-
-/* Staggered fade in for lists */
-@keyframes stagger-fade-in {
-    0% {
-        opacity: 0;
-        transform: translateX(16px);
-    }
-
-    100% {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* Scale in for checkmarks */
-@keyframes scale-in {
-    from {
-        opacity: 0;
-        transform: scale(0);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* Fade in for table rows */
-@keyframes fade-in-row {
-    from {
-        opacity: 0;
-        transform: translateX(-8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* Shake animation for errors */
-@keyframes shake {
-
-    0%,
-    100% {
-        transform: translateX(0);
-    }
-
-    20%,
-    60% {
-        transform: translateX(-6px);
-    }
-
-    40%,
-    80% {
-        transform: translateX(6px);
-    }
-}
-
-/* Subtle pulse */
-@keyframes subtle-pulse {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.7;
-    }
-}
-
-/* Float up */
-@keyframes float-up {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* ============ ANIMATION CLASSES ============ */
-
-.animate-fade-in-up {
-    animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-fade-in {
     animation: fade-in 0.4s ease-out forwards;
 }
 
+.animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+}
+
 .animate-slide-in-right {
-    animation: slide-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slide-in-right 0.5s ease-out forwards;
 }
 
-.animate-stagger-fade-in {
-    animation: stagger-fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    opacity: 0;
-}
-
-.animate-scale-in {
-    animation: scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.animate-fade-in-row {
-    animation: fade-in-row 0.3s ease-out forwards;
-    opacity: 0;
-}
-
-.animate-shake {
-    animation: shake 0.4s ease-in-out;
-}
-
-.animate-float-up {
-    animation: float-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* ============ GLOBAL SMOOTH TRANSITIONS ============ */
-
-/* Enable smooth transitions globally with performance optimization */
-* {
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* Specific smooth transitions for interactive elements */
-button,
-a,
-input,
-.transition-all {
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* ============ SCROLLBAR STYLING ============ */
-
-/* Custom scrollbar for chat */
-.overflow-y-auto::-webkit-scrollbar {
+/* ============ SCROLLBAR ============ */
+::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
 }
 
-.overflow-y-auto::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
     border-radius: 3px;
-    transition: background 0.3s ease;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
 }
 
-/* ============ SMOOTH HOVER STATES ============ */
-
-/* Smooth focus states */
-input:focus,
-button:focus {
-    outline: none;
-    transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+/* ============ UTILITY CLASSES ============ */
+.text-primary {
+    color: var(--color-text);
 }
 
-/* Table row hover */
-tbody tr {
-    transition: background-color 0.2s ease;
+.text-secondary {
+    color: var(--color-text-secondary);
 }
 
-/* ============ FLOATING BUTTON GLOW ============ */
+.text-muted {
+    color: var(--color-text-muted);
+}
 
-.hover\:shadow-blue-500\/25:hover {
-    box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.4);
+.text-accent {
+    color: var(--color-accent);
+}
+
+.bg-surface {
+    background-color: var(--color-surface);
+}
+
+.bg-alt {
+    background-color: var(--color-bg-alt);
+}
+
+.border-default {
+    border-color: var(--color-border);
 }
