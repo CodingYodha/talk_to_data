@@ -1,0 +1,4 @@
+reflex
+google-generativeai
+pandas
+python-dotenv
