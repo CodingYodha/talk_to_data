@@ -4,7 +4,7 @@ Text-to-SQL Agent with natural language query processing
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -163,6 +163,110 @@ async def health_check():
         raise HTTPException(
             status_code=503,
             detail=f"Service unavailable: {str(e)}"
+        )
+
+
+# ============ DATABASE HOT-SWAP ENDPOINTS ============
+
+@app.get("/api/database/info")
+async def get_database_info():
+    """Get information about the currently connected database."""
+    from database_utils import DatabaseManager
+    
+    try:
+        info = DatabaseManager.get_current_database_info()
+        return {
+            "success": True,
+            "database": info
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/database/upload")
+async def upload_database(file: UploadFile = File(...)):
+    """
+    Upload a new SQLite database file.
+    The system immediately switches to using the new database.
+    """
+    from database_utils import DatabaseManager
+    import tempfile
+    
+    # Validate file extension
+    if not file.filename.endswith('.db'):
+        raise HTTPException(
+            status_code=400,
+            detail="Only .db files are allowed"
+        )
+    
+    # Save to temp file first
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save uploaded file: {str(e)}"
+        )
+    
+    # Switch to the new database
+    try:
+        success, message = DatabaseManager.switch_database(tmp_path)
+        
+        # Clean up temp file
+        os.remove(tmp_path)
+        
+        if success:
+            info = DatabaseManager.get_current_database_info()
+            return {
+                "success": True,
+                "message": message,
+                "database": info
+            }
+        else:
+            raise HTTPException(status_code=400, detail=message)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Clean up temp file on error
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database switch failed: {str(e)}"
+        )
+
+
+@app.post("/api/database/reset")
+async def reset_database():
+    """
+    Reset to the default demo database (Chinook).
+    Removes any user-uploaded database.
+    """
+    from database_utils import DatabaseManager
+    
+    try:
+        success, message = DatabaseManager.reset_to_default()
+        
+        if success:
+            info = DatabaseManager.get_current_database_info()
+            return {
+                "success": True,
+                "message": message,
+                "database": info
+            }
+        else:
+            raise HTTPException(status_code=500, detail=message)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database reset failed: {str(e)}"
         )
 
 

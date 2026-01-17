@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import InfoModal from './InfoModal';
+import DatabaseModal from './DatabaseModal';
 
 /**
  * Navbar - Ultra-compact navigation bar with icons and settings
@@ -8,6 +9,7 @@ import InfoModal from './InfoModal';
 export default function Navbar({ onNavigate, currentPage, onToggleSidebar, isSidebarOpen }) {
     const { isDark, toggleTheme } = useTheme();
     const [isInfoOpen, setIsInfoOpen] = useState(false);
+    const [isDbModalOpen, setIsDbModalOpen] = useState(false);
     const isChat = currentPage === 'chat';
     const isSettings = currentPage === 'settings';
 
@@ -113,6 +115,18 @@ export default function Navbar({ onNavigate, currentPage, onToggleSidebar, isSid
                     </button>
                 </div>
 
+                {/* Database Button */}
+                <button
+                    onClick={() => setIsDbModalOpen(true)}
+                    className={`nav-link relative rounded-full overflow-hidden transition-all duration-500 ${isChat ? 'p-1' : 'p-1.5 md:p-2'}`}
+                    title="Switch Database"
+                >
+                    <span className="hover-bg"></span>
+                    <svg className={`text-[var(--color-text)] relative z-10 ${isChat ? 'w-3.5 h-3.5' : 'w-4 h-4 md:w-5 md:h-5'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                    </svg>
+                </button>
+
                 {/* Info Button */}
                 <button
                     onClick={() => setIsInfoOpen(true)}
@@ -154,8 +168,9 @@ export default function Navbar({ onNavigate, currentPage, onToggleSidebar, isSid
                 )}
             </div>
 
-            {/* Info Modal */}
+            {/* Modals */}
             <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+            <DatabaseModal isOpen={isDbModalOpen} onClose={() => setIsDbModalOpen(false)} />
         </nav>
     );
 }
