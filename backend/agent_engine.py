@@ -6,7 +6,7 @@ import time
 from router import determine_complexity
 from database_utils import DBManager
 from prompts import build_system_prompt
-from llm_client import call_llm, call_llm_raw, call_llm_raw_async
+from llm_client import call_llm, call_llm_json, call_llm_raw, call_llm_raw_async
 
 
 # ============ QUERY CACHE ============
@@ -370,8 +370,8 @@ User Question: {user_question}"""
     
     try:
         print(f"[ATTEMPT 1] Using {complexity.upper()} model...")
-        raw_response = call_llm(full_prompt, model_type=complexity)
-        parsed_response = json.loads(raw_response)
+        # Use call_llm_json for automatic JSON parsing with retry on failure
+        parsed_response = call_llm_json(full_prompt, model_type=complexity)
         
         step_info["thought"] = parsed_response.get("thought_process")
         step_info["sql"] = parsed_response.get("sql_query")
@@ -549,8 +549,8 @@ User Question: {user_question}"""
     final_data = None
     
     try:
-        raw_response = call_llm(full_prompt, model_type=complexity)
-        parsed_response = json_module.loads(raw_response)
+        # Use call_llm_json for automatic JSON parsing with retry on failure
+        parsed_response = call_llm_json(full_prompt, model_type=complexity)
         
         step_info["thought"] = parsed_response.get("thought_process")
         step_info["sql"] = parsed_response.get("sql_query")

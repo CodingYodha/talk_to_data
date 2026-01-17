@@ -27,6 +27,7 @@ def build_system_prompt(schema_summary: str) -> str:
     
     ### CRITICAL RULES
     - **DO NOT ASSUME ANYTHING**: If the user's question does not clearly relate to the database schema, do NOT make assumptions or guess what they want.
+    - If the user's follow up question is ambiguous or contradicts the previous result, do NOT guess. Your primary goal is to ask for clarification.
     - **UNRELATED QUERIES**: If the question is unrelated to the Chinook music database (artists, albums, tracks, customers, invoices, employees, playlists, genres, media types), return exactly:
     {{
        "thought_process": "This question is not related to the Chinook music database. The database contains information about music (artists, albums, tracks, genres, playlists) and sales (customers, invoices, employees). I cannot answer questions outside this scope.",

@@ -1,4 +1,5 @@
 import re
+import json
 from anthropic import Anthropic, AsyncAnthropic
 import httpx
 
@@ -72,6 +73,66 @@ def _clean_json_response(response_text: str) -> str:
         return "{}"
     
     return text
+
+
+# JSON Repair prompt for retry
+JSON_REPAIR_PROMPT = """Your last response was not valid JSON. Please provide the exact same answer again, but ONLY in strict JSON format.
+
+Your previous response was:
+{previous_response}
+
+Please respond with ONLY a valid JSON object like:
+{{
+   "thought_process": "Your reasoning here...",
+   "sql_query": "SELECT ... FROM ..."
+}}
+
+Output ONLY the JSON, no other text."""
+
+
+def _call_with_json_retry(call_func, prompt: str, model_type: str, max_retries: int = 1):
+    """
+    Wrapper that retries LLM call if JSON parsing fails.
+    
+    Args:
+        call_func: The actual LLM call function to use
+        prompt: Original prompt
+        model_type: 'flash' or 'pro'
+        max_retries: Number of retry attempts for JSON parsing (default 1)
+    
+    Returns:
+        Parsed JSON dict or raises exception
+    """
+    # First attempt
+    raw_response = call_func(prompt, model_type)
+    cleaned = _clean_json_response(raw_response)
+    
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        print(f"[JSON RETRY] First parse failed: {e}")
+    
+    # Retry with repair prompt
+    for attempt in range(max_retries):
+        print(f"[JSON RETRY] Attempt {attempt + 1}/{max_retries} - Asking model to fix JSON...")
+        
+        repair_prompt = JSON_REPAIR_PROMPT.format(previous_response=raw_response[:500])
+        
+        try:
+            retry_response = call_func(repair_prompt, model_type)
+            cleaned = _clean_json_response(retry_response)
+            parsed = json.loads(cleaned)
+            print(f"[JSON RETRY] Success on retry {attempt + 1}")
+            return parsed
+        except json.JSONDecodeError as e:
+            print(f"[JSON RETRY] Retry {attempt + 1} failed: {e}")
+            raw_response = retry_response  # Use latest for next attempt
+    
+    # All retries failed - return string for caller to handle
+    raise json.JSONDecodeError(
+        f"Failed to parse JSON after {max_retries + 1} attempts",
+        cleaned, 0
+    )
 
 
 def _call_groq(prompt: str, system_prompt: str = "Output valid JSON only.", max_tokens: int = 4096) -> str:
@@ -190,6 +251,51 @@ def call_llm(prompt: str, model_type: str = 'flash', llm_mode: str = None) -> st
 
     else:
         raise Exception(f"Unknown model_type '{model_type}'")
+
+
+def call_llm_json(prompt: str, model_type: str = 'flash', llm_mode: str = None) -> dict:
+    """
+    Calls the LLM and returns a PARSED JSON dict.
+    If JSON parsing fails, retries with a repair prompt asking the model to fix the format.
+    
+    Args:
+        prompt: The prompt to send
+        model_type: 'flash' or 'pro'
+        llm_mode: Override the global mode ('paid' or 'free')
+    
+    Returns:
+        Parsed JSON as dict
+        
+    Raises:
+        json.JSONDecodeError if parsing fails after retry
+    """
+    mode = llm_mode or _current_llm_mode
+    
+    def make_raw_call(p: str, mt: str) -> str:
+        """Internal raw call function for retry wrapper."""
+        system_prompt = "Output valid JSON only."
+        
+        if mode == "free":
+            return _call_groq(p, system_prompt)
+        
+        if mt == 'flash':
+            message = anthropic_client.messages.create(
+                model=MODELS["paid"]["flash"],
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[{"role": "user", "content": p}]
+            )
+            return message.content[0].text
+        else:  # pro
+            message = anthropic_client.messages.create(
+                model=MODELS["paid"]["pro"],
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[{"role": "user", "content": p}]
+            )
+            return message.content[0].text
+    
+    return _call_with_json_retry(make_raw_call, prompt, model_type, max_retries=1)
 
 
 def call_llm_raw(prompt: str, model_type: str = 'flash', llm_mode: str = None) -> str:
