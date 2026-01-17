@@ -3,17 +3,18 @@ Talk to Data - FastAPI Backend Server
 Text-to-SQL Agent with natural language query processing
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
-import os
 import json
-from dotenv import load_dotenv
+import os
 
-# Load environment variables
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+# Initialize settings FIRST - fail fast if config is invalid
+from config import init_settings, get_settings
+settings = init_settings()
 
 from agent_engine import process_question, process_question_streaming
 from analysis_engine import analyze_data
@@ -25,10 +26,10 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configure CORS for React frontend
+# Configure CORS from settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,11 +90,30 @@ class AnalyzeResponse(BaseModel):
 
 @app.get("/api/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint"""
-    return HealthResponse(
-        status="healthy",
-        message="Talk to Data API is running"
-    )
+    """
+    Health check endpoint - verifies database connectivity.
+    Returns 200 if healthy, 503 if database unreachable.
+    """
+    from database_utils import DatabaseManager
+    
+    try:
+        # Actually ping the database
+        if DatabaseManager.health_check():
+            db_type = DatabaseManager.get_database_type()
+            return HealthResponse(
+                status="healthy",
+                message=f"Talk to Data API is running. Database ({db_type}) connected."
+            )
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Database connection failed"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Service unavailable: {str(e)}"
+        )
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
@@ -245,9 +265,50 @@ async def stream_query(request: QueryRequest):
     )
 
 
+# ============ STATIC FILE SERVING (Monolith Deployment) ============
+
+# Path to frontend build directory
+FRONTEND_BUILD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+
+# Only mount static files if build directory exists
+if os.path.exists(FRONTEND_BUILD_DIR):
+    print(f"[STATIC] Serving frontend from: {FRONTEND_BUILD_DIR}")
+    
+    # Mount static assets (js, css, images)
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_BUILD_DIR, "assets")), name="static-assets")
+    
+    # Catch-all route for SPA - must be AFTER all API routes
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """
+        Serve frontend for all non-API routes.
+        Enables client-side routing (React Router, etc.)
+        """
+        # If it's an API call that wasn't caught, return 404
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        
+        # Try to serve the specific file first
+        file_path = os.path.join(FRONTEND_BUILD_DIR, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        
+        # Otherwise serve index.html for SPA routing
+        index_path = os.path.join(FRONTEND_BUILD_DIR, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        
+        raise HTTPException(status_code=404, detail="Frontend not found")
+else:
+    print(f"[STATIC] Frontend build not found at: {FRONTEND_BUILD_DIR}")
+    print(f"[STATIC] Run 'npm run build' in frontend directory to enable static serving")
+
+
 # ============ Run Server ============
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
+    # Use PORT env var for cloud platforms (Railway, Render, etc.)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"[SERVER] Starting on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

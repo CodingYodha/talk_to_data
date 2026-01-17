@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import InfoModal from './InfoModal';
 
 /**
  * Navbar - Ultra-compact navigation bar with icons and settings
  */
 export default function Navbar({ onNavigate, currentPage, onToggleSidebar, isSidebarOpen }) {
     const { isDark, toggleTheme } = useTheme();
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
     const isChat = currentPage === 'chat';
     const isSettings = currentPage === 'settings';
 
@@ -110,6 +113,18 @@ export default function Navbar({ onNavigate, currentPage, onToggleSidebar, isSid
                     </button>
                 </div>
 
+                {/* Info Button */}
+                <button
+                    onClick={() => setIsInfoOpen(true)}
+                    className={`nav-link relative rounded-full overflow-hidden transition-all duration-500 ${isChat ? 'p-1' : 'p-1.5 md:p-2'}`}
+                    title="Features"
+                >
+                    <span className="hover-bg"></span>
+                    <svg className={`text-[var(--color-text)] relative z-10 ${isChat ? 'w-3.5 h-3.5' : 'w-4 h-4 md:w-5 md:h-5'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+
                 {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
@@ -138,6 +153,9 @@ export default function Navbar({ onNavigate, currentPage, onToggleSidebar, isSid
                     </button>
                 )}
             </div>
+
+            {/* Info Modal */}
+            <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
         </nav>
     );
 }

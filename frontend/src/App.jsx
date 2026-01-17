@@ -226,7 +226,7 @@ function AppContent() {
       error: null,
       originalQuestion: question,
       isStreaming: true,
-      streamingStatus: 'Connecting...',
+      streamingStatus: llmMode === 'paid' ? 'Using Flash...' : 'Using Free...',
       model_used: '',
     };
     setMessages((prev) => [...prev, streamingMessage]);

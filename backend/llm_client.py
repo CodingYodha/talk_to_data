@@ -1,32 +1,23 @@
-import os
 import re
 from anthropic import Anthropic, AsyncAnthropic
-from dotenv import load_dotenv
-
-# Load environment variables from parent directory
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
-
-# Initialize Anthropic clients (sync and async)
-anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
-# Groq client for free tier (OpenAI-compatible)
 import httpx
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# Import centralized config
+from config import get_settings
+
+# Get settings (already validated at startup)
+_settings = get_settings()
+
+# Initialize Anthropic clients with validated API key
+anthropic_client = Anthropic(api_key=_settings.ANTHROPIC_API_KEY)
+async_anthropic_client = AsyncAnthropic(api_key=_settings.ANTHROPIC_API_KEY)
+
+# Groq API config
+GROQ_API_KEY = _settings.GROQ_API_KEY
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Model mappings
-MODELS = {
-    "paid": {
-        "flash": "claude-haiku-4-5-20251001",
-        "pro": "claude-sonnet-4-5-20250929"
-    },
-    "free": {
-        "flash": "openai/gpt-oss-20b",  # Fast model on Groq
-        "pro": "openai/gpt-oss-120b"     # Same model, Groq free tier
-    }
-}
+# Model mappings from config
+MODELS = _settings.models
 
 # Current LLM mode - can be 'paid' or 'free'
 _current_llm_mode = "paid"

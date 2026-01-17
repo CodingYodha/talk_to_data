@@ -88,6 +88,38 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* ============ MOBILE VIEWPORT HEIGHT FIX ============ */
+/* Use dynamic viewport height to account for mobile browser toolbars */
+.h-screen-mobile {
+    height: 100vh;
+    height: 100dvh;
+    /* Dynamic viewport height - adjusts for mobile browser UI */
+}
+
+/* Minimum tap target size for mobile (44px recommended by Apple/Google) */
+@media (max-width: 768px) {
+    .touch-target {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Larger touch targets for primary buttons on mobile */
+    .btn-primary,
+    .btn-accent,
+    .btn-secondary {
+        min-height: 44px;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+
+    /* Input fields easier to tap */
+    input,
+    textarea,
+    select {
+        min-height: 44px;
+    }
+}
+
 /* ============ GRID BACKGROUND ============ */
 .grid-bg {
     background-image:

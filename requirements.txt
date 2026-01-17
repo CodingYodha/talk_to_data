@@ -4,3 +4,8 @@ pandas
 numpy
 python-dotenv
 anthropic
+pydantic-settings
+fastapi
+uvicorn
+httpx
+sqlalchemy

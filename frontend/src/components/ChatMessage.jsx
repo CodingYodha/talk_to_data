@@ -236,29 +236,32 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
 
                         {/* Data Table */}
                         {message.results && message.results.length > 0 && (
-                            <div className={`overflow-x-auto rounded-lg border border-[var(--color-border)] transition-all duration-300 ${showTable ? 'opacity-100' : 'opacity-0'}`}>
-                                <table className="min-w-full">
-                                    <thead className="bg-[var(--color-bg-alt)]">
-                                        <tr>
-                                            {message.columns.map((col, idx) => (
-                                                <th key={idx} className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-text)] uppercase tracking-wider">
-                                                    {col}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-[var(--color-border)]">
-                                        {message.results.map((row, rowIdx) => (
-                                            <tr key={rowIdx} className="hover:bg-[var(--color-surface-hover)] transition-colors">
-                                                {row.map((cell, cellIdx) => (
-                                                    <td key={cellIdx} className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                                                        {cell}
-                                                    </td>
+                            <div className={`rounded-lg border border-[var(--color-border)] transition-all duration-300 ${showTable ? 'opacity-100' : 'opacity-0'}`}>
+                                {/* Mobile scroll wrapper - only shows horizontal scroll on small screens */}
+                                <div className="overflow-x-auto md:overflow-x-visible max-w-full">
+                                    <table className="min-w-full">
+                                        <thead className="bg-[var(--color-bg-alt)]">
+                                            <tr>
+                                                {message.columns.map((col, idx) => (
+                                                    <th key={idx} className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-text)] uppercase tracking-wider whitespace-nowrap">
+                                                        {col}
+                                                    </th>
                                                 ))}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-[var(--color-border)]">
+                                            {message.results.map((row, rowIdx) => (
+                                                <tr key={rowIdx} className="hover:bg-[var(--color-surface-hover)] transition-colors">
+                                                    {row.map((cell, cellIdx) => (
+                                                        <td key={cellIdx} className="px-4 py-3 text-sm text-[var(--color-text-secondary)] whitespace-nowrap md:whitespace-normal">
+                                                            {cell}
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
