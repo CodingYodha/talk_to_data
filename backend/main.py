@@ -247,6 +247,10 @@ async def stream_query(request: QueryRequest):
                 else:
                     data_str = str(event_data)
                 
+                # SSE requires newlines in data to be sent as separate data: lines
+                # Or we can encode newlines to prevent corruption
+                data_str = data_str.replace('\n', '\\n').replace('\r', '\\r')
+                
                 yield f"event: {event_type}\ndata: {data_str}\n\n"
                 
         except Exception as e:

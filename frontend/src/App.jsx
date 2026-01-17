@@ -242,11 +242,16 @@ function AppContent() {
           switch (eventType) {
             case 'status': msg.streamingStatus = data; setCurrentStatus(data); break;
             case 'model': msg.model_used = data; msg.content = `Processing with ${data} model...`; break;
-            case 'thought': msg.thought_trace = data; break;
-            case 'sql': msg.sql_code = data; setLastSql(data); break;
+            case 'thought': msg.thought_trace = typeof data === 'string' ? data.replace(/\\n/g, '\n').replace(/\\r/g, '\r') : data; break;
+            case 'sql': {
+              const decodedSql = typeof data === 'string' ? data.replace(/\\n/g, '\n').replace(/\\r/g, '\r') : data;
+              msg.sql_code = decodedSql;
+              setLastSql(decodedSql);
+              break;
+            }
             case 'table': msg.columns = data.columns || []; msg.results = data.results || []; msg.content = `Processed using ${msg.model_used || 'unknown'} model.`; break;
             case 'suggestions': setSuggestions(data || []); break;
-            case 'summary': msg.data_summary = data; break;
+            case 'summary': msg.data_summary = typeof data === 'string' ? data.replace(/\\n/g, '\n').replace(/\\r/g, '\r') : data; break;
             case 'error': msg.error = data; msg.content = 'Error processing query'; break;
             case 'done': msg.isStreaming = false; msg.streamingStatus = ''; if (!msg.content || msg.content.includes('Processing')) { msg.content = `Processed using ${msg.model_used || 'unknown'} model.`; } break;
             default: break;

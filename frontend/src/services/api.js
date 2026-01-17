@@ -85,13 +85,31 @@ export async function streamQuery(question, previousSql = null, onEvent, llmMode
 
             for (const line of lines) {
                 if (line.startsWith('event: ')) {
+                    // New event starting - dispatch previous if exists
+                    if (currentEvent && currentData) {
+                        try {
+                            let parsedData;
+                            try {
+                                parsedData = JSON.parse(currentData);
+                            } catch {
+                                parsedData = currentData;
+                            }
+                            onEvent(currentEvent, parsedData);
+                            if (currentEvent === 'done') {
+                                return;
+                            }
+                        } catch (e) {
+                            console.error('Event parse error:', e);
+                        }
+                    }
                     currentEvent = line.slice(7).trim();
+                    currentData = '';
                 } else if (line.startsWith('data: ')) {
-                    currentData = line.slice(6);
-                } else if (line === '' && currentEvent) {
+                    // Accumulate data (could be multi-line)
+                    currentData += line.slice(6);
+                } else if (line === '' && currentEvent && currentData) {
                     // End of event, dispatch it
                     try {
-                        // Try to parse as JSON, fall back to string
                         let parsedData;
                         try {
                             parsedData = JSON.parse(currentData);
@@ -101,7 +119,6 @@ export async function streamQuery(question, previousSql = null, onEvent, llmMode
 
                         onEvent(currentEvent, parsedData);
 
-                        // Stop if done
                         if (currentEvent === 'done') {
                             return;
                         }
