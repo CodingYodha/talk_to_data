@@ -72,36 +72,8 @@ export default function ChatMessage({ message, isSelected = false, onSelect, sho
             yPos = doc.lastAutoTable.finalY + 15;
         }
 
-        // Add chart if analysis data exists
-        if (analysisData?.chart_config) {
-            const chartElement = document.getElementById('analysis-chart');
-            if (chartElement) {
-                try {
-                    // Check if we need a new page
-                    if (yPos > 180) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-
-                    doc.setFontSize(12);
-                    doc.setTextColor(26, 31, 54);
-                    doc.text('Visualization:', 14, yPos);
-                    yPos += 10;
-
-                    const canvas = await html2canvas(chartElement, {
-                        backgroundColor: '#ffffff',
-                        scale: 2
-                    });
-                    const imgData = canvas.toDataURL('image/png');
-                    const imgWidth = pageWidth - 28;
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-                    doc.addImage(imgData, 'PNG', 14, yPos, imgWidth, Math.min(imgHeight, 100));
-                } catch (e) {
-                    console.error('Chart capture failed:', e);
-                }
-            }
-        }
+        // Note: Chart capture removed - analysis is now in separate panel
+        // PDF exports the query results table only
 
         doc.save('query-report.pdf');
     };
