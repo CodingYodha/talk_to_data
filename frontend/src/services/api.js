@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:8000';
+// Use relative URL for API calls - works on localhost AND deployed servers
+const API_BASE_URL = '';
 
 /**
  * Submit a natural language query to the backend (non-streaming)
