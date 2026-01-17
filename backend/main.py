@@ -3,6 +3,7 @@ Talk to Data - FastAPI Backend Server
 Text-to-SQL Agent with natural language query processing
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json
 import os
+import asyncio
 
 # Initialize settings FIRST - fail fast if config is invalid
 from config import init_settings, get_settings
@@ -19,11 +21,59 @@ settings = init_settings()
 from agent_engine import process_question, process_question_streaming
 from analysis_engine import analyze_data
 
-# Initialize FastAPI app
+
+# ============ KEEP-ALIVE TASK (Prevent Render Free Tier Spindown) ============
+
+async def keep_alive():
+    """
+    Background task that pings the app's own health endpoint every 14 minutes.
+    Only runs in production when APP_URL is set.
+    """
+    import httpx
+    
+    app_url = os.environ.get("APP_URL")
+    
+    if not app_url:
+        print("[KEEP-ALIVE] APP_URL not set - skipping keep-alive (local development)")
+        return
+    
+    print(f"[KEEP-ALIVE] Starting background task for {app_url}")
+    
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(f"{app_url}/api/health")
+                print(f"[KEEP-ALIVE] Pinged self to keep active: {response.status_code}")
+        except Exception as e:
+            print(f"[KEEP-ALIVE] Ping failed (will retry): {e}")
+        
+        # Sleep for 14 minutes (Render sleeps after 15 mins of inactivity)
+        await asyncio.sleep(840)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan manager for startup/shutdown tasks."""
+    # Startup: Create keep-alive background task
+    task = asyncio.create_task(keep_alive())
+    print("[STARTUP] Keep-alive task created")
+    
+    yield  # App is running
+    
+    # Shutdown: Cancel the task
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        print("[SHUTDOWN] Keep-alive task cancelled")
+
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="Talk to Data API",
     description="Text-to-SQL Agent API for querying the Chinook database",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS from settings
