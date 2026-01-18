@@ -1,7 +1,8 @@
 # Talk to Data
 
-A production-ready Text-to-SQL agent that converts natural language questions into SQL queries. Connect it to your database, ask questions in plain English, and get instant answers with visualizations.
-
+A production-ready Text-to-SQL agent that converts natural language questions into SQL queries. Connect it to your database, ask questions in plain English, and get instant answers with visualizations. <br>
+The following website has been deployed and you can use it over here - https://prism-gi6z.onrender.com/
+Make sure to enable 'Open Source' model option as Claude API connection has been revoked <br>
 ## Quick Start (One Command)
 
 ```bash
